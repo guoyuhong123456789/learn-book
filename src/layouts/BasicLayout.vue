@@ -74,7 +74,7 @@ function createNote() {
         @click="handleMenuClick"
       />
       <div v-show="!settings.sidebarCollapsed" class="app-sider-footer">
-        <div class="app-sider-hint">本地笔记 · 数据存于浏览器</div>
+        <div class="app-sider-hint">数据存储于 MySQL 数据库</div>
       </div>
     </a-layout-sider>
 

@@ -15,6 +15,8 @@ import type { Category, Note, Tag } from '@/types'
 import { useNotesStore } from '@/stores/notes'
 import { useCategoriesStore } from '@/stores/categories'
 import { useSettingsStore } from '@/stores/settings'
+import { importApi } from '@/api/knowledge'
+import { errorMessage } from '@/api/http'
 import { seedCategories, seedNotes, seedTags } from '@/data/seeds'
 import { extractTitle } from '@/utils/markdown'
 import dayjs from 'dayjs'
@@ -51,15 +53,19 @@ function titleFromMarkdown(text: string, filename: string): string {
 
 function handleMarkdownUpload(file: File): boolean {
   const reader = new FileReader()
-  reader.onload = () => {
+  reader.onload = async () => {
     const text = String(reader.result ?? '')
-    notesStore.createNote({
-      title: titleFromMarkdown(text, file.name),
-      content: text,
-      categoryId: null,
-      tagIds: [],
-    })
-    message.success(`已导入「${file.name}」`)
+    try {
+      await notesStore.createNote({
+        title: titleFromMarkdown(text, file.name),
+        content: text,
+        categoryId: null,
+        tagIds: [],
+      })
+      message.success(`已导入「${file.name}」`)
+    } catch (e) {
+      message.error(errorMessage(e))
+    }
   }
   reader.onerror = () => message.error(`读取「${file.name}」失败`)
   reader.readAsText(file)
@@ -105,21 +111,29 @@ function exportJson() {
 
 function handleJsonUpload(file: File): boolean {
   const reader = new FileReader()
-  reader.onload = () => {
+  reader.onload = async () => {
+    let data: { notes?: Note[]; categories?: Category[]; tags?: Tag[] }
     try {
-      const data = JSON.parse(String(reader.result ?? '{}')) as {
-        notes?: Note[]
-        categories?: Category[]
-        tags?: Tag[]
-      }
-      if (!Array.isArray(data.notes)) throw new Error('invalid backup')
-      notesStore.replaceAll(data.notes)
-      if (Array.isArray(data.categories) && Array.isArray(data.tags)) {
-        categoriesStore.replaceAll(data.categories, data.tags)
-      }
-      message.success('备份已导入')
+      data = JSON.parse(String(reader.result ?? '{}'))
     } catch {
       message.error('备份文件格式不正确')
+      return
+    }
+    if (!Array.isArray(data.notes)) {
+      message.error('备份文件格式不正确')
+      return
+    }
+    try {
+      await importApi.all({
+        notes: data.notes,
+        categories: Array.isArray(data.categories) ? data.categories : undefined,
+        tags: Array.isArray(data.tags) ? data.tags : undefined,
+        mode: 'merge',
+      })
+      await Promise.all([notesStore.fetchNotes(), categoriesStore.fetchAll()])
+      message.success('备份已导入')
+    } catch (e) {
+      message.error(errorMessage(e))
     }
   }
   reader.onerror = () => message.error('读取备份文件失败')
@@ -127,18 +141,28 @@ function handleJsonUpload(file: File): boolean {
   return false
 }
 
-function clearNotes() {
-  notesStore.clearAll()
-  message.success('所有笔记已清空')
+async function clearNotes() {
+  try {
+    await notesStore.clearAll()
+    message.success('所有笔记已清空')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
-function restoreSeeds() {
-  notesStore.replaceAll(JSON.parse(JSON.stringify(seedNotes)) as Note[])
-  categoriesStore.replaceAll(
-    JSON.parse(JSON.stringify(seedCategories)) as Category[],
-    JSON.parse(JSON.stringify(seedTags)) as Tag[],
-  )
-  message.success('已恢复初始示例数据')
+async function restoreSeeds() {
+  try {
+    await importApi.all({
+      notes: JSON.parse(JSON.stringify(seedNotes)) as Note[],
+      categories: JSON.parse(JSON.stringify(seedCategories)) as Category[],
+      tags: JSON.parse(JSON.stringify(seedTags)) as Tag[],
+      mode: 'replace',
+    })
+    await Promise.all([notesStore.fetchNotes(), categoriesStore.fetchAll()])
+    message.success('已恢复初始示例数据')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 </script>
 
@@ -147,7 +171,7 @@ function restoreSeeds() {
     <div class="page-header">
       <div>
         <h1 class="page-title">设置</h1>
-        <p class="page-subtitle">管理外观、数据备份与本地笔记存储</p>
+        <p class="page-subtitle">管理外观与数据备份</p>
       </div>
     </div>
 
@@ -200,7 +224,7 @@ function restoreSeeds() {
           <a-alert
             type="info"
             show-icon
-            message="所有数据保存在当前浏览器的 localStorage 中，清除浏览器数据会导致笔记丢失，建议定期导出备份。"
+            message="所有数据保存在 MySQL 数据库中，建议定期导出备份。"
           />
         </div>
       </a-col>
@@ -278,7 +302,7 @@ function restoreSeeds() {
           <div class="setting-row">
             <div class="setting-info">
               <div class="setting-name">恢复初始示例数据</div>
-              <div class="setting-desc">用内置的三篇示例笔记替换当前所有笔记</div>
+              <div class="setting-desc">用内置示例数据替换当前所有笔记、分类与标签</div>
             </div>
             <a-popconfirm
               title="确定用示例数据替换当前笔记吗？"

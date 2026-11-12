@@ -13,6 +13,7 @@ import NoteCard from '@/components/NoteCard.vue'
 import CategoryTree from '@/components/CategoryTree.vue'
 import { useNotesStore } from '@/stores/notes'
 import { useCategoriesStore } from '@/stores/categories'
+import { errorMessage } from '@/api/http'
 import { plainText } from '@/utils/markdown'
 import dayjs from 'dayjs'
 
@@ -97,13 +98,21 @@ function editNote(id: string) {
   router.push(`/notes/${id}/edit`)
 }
 
-function deleteNote(id: string) {
-  notesStore.removeNote(id)
-  message.success('笔记已删除')
+async function deleteNote(id: string) {
+  try {
+    await notesStore.removeNote(id)
+    message.success('笔记已删除')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
-function toggleStar(id: string) {
-  notesStore.toggleStar(id)
+async function toggleStar(id: string) {
+  try {
+    await notesStore.toggleStar(id)
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
 function resetFilters() {

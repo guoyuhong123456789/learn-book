@@ -15,6 +15,7 @@ import dayjs from 'dayjs'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { useNotesStore } from '@/stores/notes'
 import { useCategoriesStore } from '@/stores/categories'
+import { errorMessage } from '@/api/http'
 import { extractToc, countWords } from '@/utils/markdown'
 
 const route = useRoute()
@@ -48,14 +49,22 @@ function editNote() {
   router.push(`/notes/${noteId.value}/edit`)
 }
 
-function deleteNote() {
-  notesStore.removeNote(noteId.value)
-  message.success('笔记已删除')
-  router.push('/notes')
+async function deleteNote() {
+  try {
+    await notesStore.removeNote(noteId.value)
+    message.success('笔记已删除')
+    router.push('/notes')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
-function toggleStar() {
-  notesStore.toggleStar(noteId.value)
+async function toggleStar() {
+  try {
+    await notesStore.toggleStar(noteId.value)
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
 function scrollToHeading(id: string) {

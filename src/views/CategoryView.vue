@@ -11,6 +11,7 @@ import {
 import type { Category, Tag } from '@/types'
 import { useCategoriesStore } from '@/stores/categories'
 import { useNotesStore } from '@/stores/notes'
+import { errorMessage } from '@/api/http'
 
 const categoriesStore = useCategoriesStore()
 const notesStore = useNotesStore()
@@ -54,15 +55,19 @@ const tagRows = computed(() =>
   })),
 )
 
-function addCategory() {
+async function addCategory() {
   const name = newCategoryName.value.trim()
   if (!name) {
     message.warning('请输入分类名称')
     return
   }
-  categoriesStore.addCategory(name, newCategoryColor.value)
-  newCategoryName.value = ''
-  message.success('分类已添加')
+  try {
+    await categoriesStore.addCategory(name, newCategoryColor.value)
+    newCategoryName.value = ''
+    message.success('分类已添加')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
 function openEditCategory(category: Category) {
@@ -71,35 +76,47 @@ function openEditCategory(category: Category) {
   editingCategoryColor.value = category.color
 }
 
-function saveCategory() {
+async function saveCategory() {
   if (!editingCategory.value) return
   const name = editingCategoryName.value.trim()
   if (!name) {
     message.warning('分类名称不能为空')
     return
   }
-  categoriesStore.updateCategory(editingCategory.value.id, {
-    name,
-    color: editingCategoryColor.value,
-  })
-  editingCategory.value = null
-  message.success('分类已更新')
+  try {
+    await categoriesStore.updateCategory(editingCategory.value.id, {
+      name,
+      color: editingCategoryColor.value,
+    })
+    editingCategory.value = null
+    message.success('分类已更新')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
-function removeCategory(id: string) {
-  categoriesStore.removeCategory(id)
-  message.success('分类已删除')
+async function removeCategory(id: string) {
+  try {
+    await categoriesStore.removeCategory(id)
+    message.success('分类已删除')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
-function addTag() {
+async function addTag() {
   const name = newTagName.value.trim()
   if (!name) {
     message.warning('请输入标签名称')
     return
   }
-  categoriesStore.addTag(name, newTagColor.value)
-  newTagName.value = ''
-  message.success('标签已添加')
+  try {
+    await categoriesStore.addTag(name, newTagColor.value)
+    newTagName.value = ''
+    message.success('标签已添加')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
 function openEditTag(tag: Tag) {
@@ -108,24 +125,32 @@ function openEditTag(tag: Tag) {
   editingTagColor.value = tag.color
 }
 
-function saveTag() {
+async function saveTag() {
   if (!editingTag.value) return
   const name = editingTagName.value.trim()
   if (!name) {
     message.warning('标签名称不能为空')
     return
   }
-  categoriesStore.updateTag(editingTag.value.id, {
-    name,
-    color: editingTagColor.value,
-  })
-  editingTag.value = null
-  message.success('标签已更新')
+  try {
+    await categoriesStore.updateTag(editingTag.value.id, {
+      name,
+      color: editingTagColor.value,
+    })
+    editingTag.value = null
+    message.success('标签已更新')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
-function removeTag(id: string) {
-  categoriesStore.removeTag(id)
-  message.success('标签已删除')
+async function removeTag(id: string) {
+  try {
+    await categoriesStore.removeTag(id)
+    message.success('标签已删除')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 </script>
 

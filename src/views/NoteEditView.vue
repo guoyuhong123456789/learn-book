@@ -12,6 +12,7 @@ import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import TagSelect from '@/components/TagSelect.vue'
 import { useNotesStore } from '@/stores/notes'
 import { useCategoriesStore } from '@/stores/categories'
+import { errorMessage } from '@/api/http'
 import { extractTitle } from '@/utils/markdown'
 
 const route = useRoute()
@@ -71,34 +72,42 @@ function load() {
   savedSnapshot.value = snapshot()
 }
 
-function save() {
+async function save() {
   const finalTitle = title.value.trim() || extractTitle(content.value) || '未命名笔记'
-  if (isNew.value) {
-    const note = notesStore.createNote({
-      title: finalTitle,
-      content: content.value,
-      categoryId: categoryId.value,
-      tagIds: tagIds.value,
-    })
-    message.success('笔记已创建')
-    router.replace(`/notes/${note.id}`)
-  } else if (existing.value) {
-    notesStore.updateNote(existing.value.id, {
-      title: finalTitle,
-      content: content.value,
-      categoryId: categoryId.value,
-      tagIds: tagIds.value,
-    })
-    message.success('笔记已保存')
-    router.replace(`/notes/${existing.value.id}`)
+  try {
+    if (isNew.value) {
+      const note = await notesStore.createNote({
+        title: finalTitle,
+        content: content.value,
+        categoryId: categoryId.value,
+        tagIds: tagIds.value,
+      })
+      message.success('笔记已创建')
+      router.replace(`/notes/${note.id}`)
+    } else if (existing.value) {
+      await notesStore.updateNote(existing.value.id, {
+        title: finalTitle,
+        content: content.value,
+        categoryId: categoryId.value,
+        tagIds: tagIds.value,
+      })
+      message.success('笔记已保存')
+      router.replace(`/notes/${existing.value.id}`)
+    }
+  } catch (e) {
+    message.error(errorMessage(e))
   }
 }
 
-function remove() {
+async function remove() {
   if (!existing.value) return
-  notesStore.removeNote(existing.value.id)
-  message.success('笔记已删除')
-  router.replace('/notes')
+  try {
+    await notesStore.removeNote(existing.value.id)
+    message.success('笔记已删除')
+    router.replace('/notes')
+  } catch (e) {
+    message.error(errorMessage(e))
+  }
 }
 
 function goBack() {
